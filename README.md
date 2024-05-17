@@ -14,8 +14,6 @@ Python Libraries: python-docx, PyPDF2, openpyxl, python-pptx, PIL, pytesseract f
 Installation Guide
 Clone the repository and install the required Python packages:
 
-bash
-复制代码
 git clone https://github.com/yourusername/yourprojectname.git
 cd yourprojectname
 pip install -r requirements.txt
