@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document Upload and Q&A</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #2f2f2f;
+            color: #ffffff;
+            padding-top: 50px;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background-color: #3a3a3a;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            border-radius: 10px;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #eaeaea;
+            margin-bottom: 20px;
+        }
+        .btn-primary, .btn-secondary {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+        }
+        .result, .answer-box {
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #4a4a4a;
+            color: #ffffff;
+            overflow-y: auto;
+            height: auto; /* Adjust based on content */
+        }
+        .answer-box {
+            height: 150px; /* Fixed height for answer box */
+        }
+        #view-file, #view-text {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 100px;
+            height: 35px;
+            padding: 5px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        #view-text {
+            right: 120px;
+            background-color: #28a745;
+        }
+        #upload-success {
+            margin-top: 15px;
+            color: #28a745;
+        }
+        .file-divider {
+            border-top: 2px solid #fff;
+            margin: 25px 0;
+            padding-top: 15px;
+        }
+        .file-title {
+            color: #ffa500;
+            font-weight: bold;
+        }
+        .file-list-item {
+            margin: 15px 0;
+            background-color: #4a4a4a;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #content-text {
+            color: #ffffff;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Document Upload and Q&A</h1>
+        <h2>Upload Documents</h2>
+        <form id="upload-form" method="post" action="/upload_multiple" enctype="multipart/form-data">
+            <div class="form-group">
+                <input type="file" name="files" class="form-control" multiple required>
+            </div>
+            <button type="submit" class="btn btn-primary">Upload</button>
+        </form>
+        <div id="file-list" class="file-list mt-3"></div>
+        <div id="upload-success"></div>
+        <h2>Ask a Question</h2>
+        <form id="ask-form" method="post" action="/ask">
+            <div class="form-group">
+                <input type="text" name="question" class="form-control" placeholder="Type your question here..." required>
+            </div>
+            <button type="submit" class="btn btn-secondary">Ask</button>
+        </form>
+        <div class="answer-box" id="answer-box">Your answer will appear here...</div>
+    </div>
+    <button id="view-file">View Images</button>
+    <button id="view-text">View Text</button>
+    <div id="file-content" class="result mt-4" style="display: none;">
+        <h4>Uploaded File Content</h4>
+        <div id="content-text">Click "View" to see your file content.</div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script>
+        document.getElementById('upload-form').onsubmit = async function (event) {
+            event.preventDefault();
+            const form = this;
+            const data = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: data
+            });
+            const result = await response.json();
+            let successText = '';
+            result.forEach(file => {
+                const fileId = `${file.filename}-${result.indexOf(file)}`;
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-list-item';
+                fileItem.id = fileId;
+                fileItem.innerHTML = `${file.filename}: ${file.status}
+                    <button class="cancel-btn" onclick="cancelUpload('${fileId}', '${file.filename}')">Cancel</button>`;
+                document.getElementById('file-list').appendChild(fileItem);
+                successText += `${file.filename}: ${file.status}<br>`;
+            });
+            document.getElementById('upload-success').innerHTML = successText;
+        };
+
+        async function cancelUpload(fileId, filename) {
+            const response = await fetch(`/cancel/${fileId}`, {
+                method: 'DELETE'
+            });
+            const result = await response.json();
+            if (result.success) {
+                const fileItem = document.getElementById(fileId);
+                if (fileItem) {
+                    fileItem.remove();
+                }
+            } else {
+                alert(result.error || 'Error cancelling file upload.');
+            }
+        }
+
+        document.getElementById('view-text').onclick = async function () {
+            const response = await fetch('/view/text');
+            const result = await response.json();
+            const contentDiv = document.getElementById('file-content');
+            let formattedContent = '';
+            Object.entries(result.categorized_files).forEach(([fileType, files]) => {
+                formattedContent += `<div class="file-divider"><span class="file-title">${fileType} Files:</span></div>`;
+                files.forEach((file, index) => {
+                    formattedContent += `<div class="file-divider"><span class="file-title">File ${index + 1}: ${file.filename}</span><div>${file.content}</div></div>`;
+                });
+            });
+            document.getElementById('content-text').innerHTML = formattedContent;
+            contentDiv.style.display = 'block';
+        };
+
+        document.getElementById('ask-form').onsubmit = async function (event) {
+            event.preventDefault();
+            const form = this;
+            const data = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: data
+            });
+            const result = await response.json();
+            document.getElementById('answer-box').textContent = result.answer || result.error || 'Error retrieving the answer.';
+        };
+    </script>
+</body>
+</html>
