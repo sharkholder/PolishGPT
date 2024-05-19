@@ -24,7 +24,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
 # Initialize OpenAI client with API key
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "Your_key_Here"))
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", "Your_Key_Here"))
 
 def allowed_file(filename):
     """Check if the file has an allowed extension."""
@@ -148,7 +148,7 @@ def upload_multiple_files():
 
 @app.route('/ask', methods=['POST'])
 def ask_question():
-    """接收用户的问题并返回基于上传的文档的答案。"""
+    """Receives a user's question and returns an answer based on the uploaded document."""
     question = request.form.get('question')
     user_id = request.remote_addr
     if user_id in file_cache and file_cache[user_id]:
@@ -157,12 +157,12 @@ def ask_question():
             response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
-                    {"role": "system", "content": "以下是上传文档的分析。"},
+                    {"role": "system", "content": "Below is an analysis of uploaded documents."},
                     {"role": "user", "content": document_texts},
                     {"role": "user", "content": question}
                 ]
             )
-            # 正确访问消息内容属性
+            # Correct access to message content properties
             if response.choices and response.choices[0].message.content:
                 return jsonify({'answer': response.choices[0].message.content})
             return jsonify({'error': "No response from AI."})
